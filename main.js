@@ -1,11 +1,18 @@
-(function() {
-  $(init)
+$(function() {
 
   var state = {}
 
+  var dateClicks = $(".calendar")
+                      .asEventStream("click", ".day")
+                      .map(".target")
+                      .map(extractDateDesignator)
 
-  function init() {
+  dateClicks.filter(not(hasSelectedDueDate)).onValue(applyDueDate)
+  dateClicks.filter(isDueDate).onValue(clearDueDate)
+
+  function reRender() {
     $(".calendar").empty().append(createDateTable())
+    $(".info").empty().append(createInfoView())
   }
 
   function createDateTable() {
@@ -24,9 +31,18 @@
   function renderWeek(date) {
     return Array.apply(null, {length: 7}).map(function(it, idx) {
       date.add(1, 'days')
-      var holiday = isHoliday(date) ? " holiday" : ""
-      return "<div class='day "+oddOrEven(date)+ holiday +"'>"+formatDayStr(date)+"</div>"
+      var classes = ['day', oddOrEven(date)]
+      if (isHoliday(date)) { classes.push("holiday") }
+      if (state.dueDate == formatDateDesignator(date)) { classes.push("due-date") }
+      return "<div class='"+ classes.join(" ") +"' data-date='"+formatDateDesignator(date)+"'>"+formatDayStr(date)+"</div>"
     }).join("")
+  }
+
+  function createInfoView() {
+    var nodes = [
+      "<h3>Due date: "+(state.dueDate || "")+"</h3>"
+    ]
+    return $(nodes.join(""))
   }
 
   function oddOrEven(date) {
@@ -46,8 +62,42 @@
   }
 
   function isHoliday(date) {
-    return holidays[date.format("DD-MM-YYYY")]
+    return holidays[formatDateDesignator(date)]
   }
+
+  function formatDateDesignator(date) {
+    return date.format("DD-MM-YYYY")
+  }
+
+  function extractDateDesignator(node) {
+    return $(node).attr("data-date")
+  }
+
+  function hasSelectedDueDate() {
+    return state.dueDate != null
+  }
+
+  function not(fn) {
+    return function() {
+      return !fn.apply(fn, arguments)
+    }
+  }
+
+  function applyDueDate(date) {
+    state.dueDate = date
+    reRender()
+  }
+
+  function isDueDate(dateDesignator) {
+    return dateDesignator === state.dueDate
+  }
+
+  function clearDueDate() {
+    state.dueDate = null
+    reRender()
+  }
+
+
 
   var holidays = {
     "01-01-2016": "Uudenvuodenpäivä",
@@ -167,4 +217,6 @@
     "26-12-2020" : "Tapaninpäivä",
   }
 
-})()
+  reRender()
+
+})

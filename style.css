@@ -3,6 +3,11 @@ body {
   padding: 0px;
 }
 
+.container {
+  display: flex;
+  flex-direction: row;
+}
+
 .calendar {
   overflow-y: scroll;
   width: 45ex;
@@ -19,6 +24,7 @@ body {
 .calendar__week_row > .day {
   flex-grow: 1;
   width: 1ex;
+  cursor: pointer;
 }
 
 .calendar__week_row > .month_name {
@@ -34,4 +40,8 @@ body {
 
 .day.holiday {
   background-color: #faa;
+}
+
+.day.due-date {
+  background-color: #393;
 }

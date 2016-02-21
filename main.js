@@ -1,9 +1,12 @@
 $(function() {
 
+  var SETTING_DUE_DATE = "SETTING_DUE_DATE"
   var SETTING_MATERNITY_START = "SETTING_MATERNITY_START"
   var state = {
     dueDate: null,
-    validMaternityStartDays: []
+    validMaternityStartDays: [],
+    maternityDays: [],
+    action: SETTING_DUE_DATE
   }
 
   var dateClicks = $(".calendar")
@@ -11,7 +14,7 @@ $(function() {
                       .map(".target")
                       .map(extractDateDesignator)
 
-  dateClicks.filter(not(hasSelectedDueDate)).onValue(applyDueDate)
+  dateClicks.filter(isSettingDueDate).onValue(applyDueDate)
   dateClicks.filter(isDueDate).onValue(clearDueDate)
   dateClicks.filter(isSettingMaternityStart).onValue(setMaternityStart)
 
@@ -23,7 +26,7 @@ $(function() {
   function createDateTable() {
     var now = moment()
     var weeks = Math.floor(moment.duration(moment().weekday(0).add(3, 'years').diff(now)).asWeeks())
-    var date = moment().subtract(1, 'days').weekday(0)
+    var date = moment().subtract(1, 'days').day(1)
     return $(Array.apply(null, {length: weeks}).map(function(it, idx) {
       var text = "<div class='calendar__week_row'>"
       text += "<div class='month_name "+oddOrEvenMonthAdjusted(date)+"'>"+monthTitleOrEmpty(date)+"</div>"
@@ -40,7 +43,9 @@ $(function() {
       var dateDesignator = formatDateDesignator(date)
       if (isSettingMaternityStart() && isValidMaternityStart(dateDesignator)) { classes.push("valid-maternity-start") }
       if (isHoliday(dateDesignator)) { classes.push("holiday") }
+      if (isMaternityDate(dateDesignator)) { classes.push("maternity") }
       if (isDueDate(dateDesignator)) { classes.push("due-date") }
+      if (isSunday(dateDesignator)) { classes.push("sunday") }
       return "<div class='"+ classes.join(" ") +"' data-date='"+ dateDesignator +"'>"+formatDayStr(date)+"</div>"
     }).join("")
   }
@@ -93,7 +98,7 @@ $(function() {
 
   function applyDueDate(date) {
     state.dueDate = date
-    state.selectedTool = SETTING_MATERNITY_START
+    state.action = SETTING_MATERNITY_START
     state.validMaternityStartDays = calculateValidMaternityStartDatesFrom(state.dueDate)
     reRender()
   }
@@ -109,8 +114,8 @@ $(function() {
     return weekdays.slice(29, 50)
   }
 
-  function isValidMaternityStart(date) {
-    return state.validMaternityStartDays.indexOf(date) > -1
+  function isValidMaternityStart(dateDesignator) {
+    return state.validMaternityStartDays.indexOf(dateDesignator) > -1
   }
 
   function isSundayOrHoliday(dateDesignator) {
@@ -119,6 +124,10 @@ $(function() {
     } else {
       return isSunday(dateDesignator)
     }
+  }
+
+  function isMaternityDate(dateDesignator) {
+    return state.maternityDays.indexOf(dateDesignator) > -1
   }
 
   function isSunday(dateDesignator) {
@@ -131,16 +140,43 @@ $(function() {
 
   function clearDueDate() {
     state.dueDate = null
+    state.action = SETTING_DUE_DATE
+    clearMaternityStart()
+    reRender()
+  }
+
+  function clearMaternityStart() {
+    state.maternityStart = null
+    state.maternityDays = []
     reRender()
   }
 
   function setMaternityStart(dateDesignator) {
-    state.dateDesignator = dateDesignator
-    reRender()
+    if (isValidMaternityStart(dateDesignator)) {
+      state.maternityStart = dateDesignator
+      state.maternityDays = calculateMaternityDates(state.maternityStart)
+      state.action = null
+      reRender()
+    }
+  }
+
+  function calculateMaternityDates(maternityStart) {
+    var maternityStartMoment = moment(maternityStart, "DD-MM-YYYY")
+    if (!maternityStartMoment.isValid()) {
+      return []
+    }
+    var weekdays = Array.apply(null, {length: 200}).map(function(it, idx) {
+      return formatDateDesignator(moment(maternityStartMoment).add(idx, 'days'))
+    }).filter(not(isSundayOrHoliday))
+    return weekdays.slice(0, 105)
   }
 
   function isSettingMaternityStart() {
-    return state.selectedTool == SETTING_MATERNITY_START
+    return state.action == SETTING_MATERNITY_START
+  }
+
+  function isSettingDueDate() {
+    return state.action == SETTING_DUE_DATE
   }
 
 

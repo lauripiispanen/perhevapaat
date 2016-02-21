@@ -25,6 +25,7 @@ body {
   flex-grow: 1;
   width: 1ex;
   cursor: pointer;
+  text-align: right;
 }
 
 .calendar__week_row > .month_name {
@@ -42,10 +43,21 @@ body {
   background-color: #faa;
 }
 
+.day.valid-maternity-start {
+  background-color: #8C8;
+}
+
+.day.maternity {
+  background-color: #AAC;
+}
+.day.maternity.odd {
+  background-color: #99C;
+}
+
 .day.due-date {
   background-color: #393;
 }
 
-.day.valid-maternity-start {
-  background-color: #8C8;
+.day.sunday {
+  font-weight: bold;
 }

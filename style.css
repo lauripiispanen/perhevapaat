@@ -1,0 +1,37 @@
+body {
+  margin: 0px;
+  padding: 0px;
+}
+
+.calendar {
+  overflow-y: scroll;
+  width: 45ex;
+}
+
+.calendar__week_row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  align-content: stretch;
+  width: 100%;
+}
+
+.calendar__week_row > .day {
+  flex-grow: 1;
+  width: 1ex;
+}
+
+.calendar__week_row > .month_name {
+  width: 15ex;
+}
+
+.day.odd, .month_name.odd {
+  background-color: #ccc;
+}
+.day.even, .month_name.even {
+  background-color: #ddd;
+}
+
+.day.holiday {
+  background-color: #faa;
+}

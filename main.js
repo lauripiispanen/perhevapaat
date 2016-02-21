@@ -1,6 +1,10 @@
 $(function() {
 
-  var state = {}
+  var SETTING_MATERNITY_START = "SETTING_MATERNITY_START"
+  var state = {
+    dueDate: null,
+    validMaternityStartDays: []
+  }
 
   var dateClicks = $(".calendar")
                       .asEventStream("click", ".day")
@@ -9,6 +13,7 @@ $(function() {
 
   dateClicks.filter(not(hasSelectedDueDate)).onValue(applyDueDate)
   dateClicks.filter(isDueDate).onValue(clearDueDate)
+  dateClicks.filter(isSettingMaternityStart).onValue(setMaternityStart)
 
   function reRender() {
     $(".calendar").empty().append(createDateTable())
@@ -32,15 +37,18 @@ $(function() {
     return Array.apply(null, {length: 7}).map(function(it, idx) {
       date.add(1, 'days')
       var classes = ['day', oddOrEven(date)]
-      if (isHoliday(date)) { classes.push("holiday") }
-      if (state.dueDate == formatDateDesignator(date)) { classes.push("due-date") }
-      return "<div class='"+ classes.join(" ") +"' data-date='"+formatDateDesignator(date)+"'>"+formatDayStr(date)+"</div>"
+      var dateDesignator = formatDateDesignator(date)
+      if (isSettingMaternityStart() && isValidMaternityStart(dateDesignator)) { classes.push("valid-maternity-start") }
+      if (isHoliday(dateDesignator)) { classes.push("holiday") }
+      if (isDueDate(dateDesignator)) { classes.push("due-date") }
+      return "<div class='"+ classes.join(" ") +"' data-date='"+ dateDesignator +"'>"+formatDayStr(date)+"</div>"
     }).join("")
   }
 
   function createInfoView() {
     var nodes = [
-      "<h3>Due date: "+(state.dueDate || "")+"</h3>"
+      "<h3>Due date: "+(state.dueDate || "")+"</h3>",
+      "<h3>Maternity start: "+(state.maternityStart || "")+"</h3>"
     ]
     return $(nodes.join(""))
   }
@@ -61,8 +69,8 @@ $(function() {
     return "" + date.date()
   }
 
-  function isHoliday(date) {
-    return holidays[formatDateDesignator(date)]
+  function isHoliday(dateDesignator) {
+    return holidays[dateDesignator]
   }
 
   function formatDateDesignator(date) {
@@ -85,7 +93,36 @@ $(function() {
 
   function applyDueDate(date) {
     state.dueDate = date
+    state.selectedTool = SETTING_MATERNITY_START
+    state.validMaternityStartDays = calculateValidMaternityStartDatesFrom(state.dueDate)
     reRender()
+  }
+
+  function calculateValidMaternityStartDatesFrom(dueDate) {
+    var dueDateMoment = moment(dueDate, "DD-MM-YYYY")
+    if (!dueDateMoment.isValid()) {
+      return false
+    }
+    var weekdays = Array.apply(null, {length: 100}).map(function(it, idx) {
+      return formatDateDesignator(moment(dueDateMoment).subtract(idx + 1, 'days'))
+    }).filter(not(isSundayOrHoliday))
+    return weekdays.slice(29, 50)
+  }
+
+  function isValidMaternityStart(date) {
+    return state.validMaternityStartDays.indexOf(date) > -1
+  }
+
+  function isSundayOrHoliday(dateDesignator) {
+    if (isHoliday(dateDesignator)) {
+      return true
+    } else {
+      return isSunday(dateDesignator)
+    }
+  }
+
+  function isSunday(dateDesignator) {
+    return moment(dateDesignator, "DD-MM-YYYY").day() == 0
   }
 
   function isDueDate(dateDesignator) {
@@ -95,6 +132,15 @@ $(function() {
   function clearDueDate() {
     state.dueDate = null
     reRender()
+  }
+
+  function setMaternityStart(dateDesignator) {
+    state.dateDesignator = dateDesignator
+    reRender()
+  }
+
+  function isSettingMaternityStart() {
+    return state.selectedTool == SETTING_MATERNITY_START
   }
 
 

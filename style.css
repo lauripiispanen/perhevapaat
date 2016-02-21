@@ -45,3 +45,7 @@ body {
 .day.due-date {
   background-color: #393;
 }
+
+.day.valid-maternity-start {
+  background-color: #8C8;
+}

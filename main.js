@@ -2,10 +2,14 @@ $(function() {
 
   var SETTING_DUE_DATE = "SETTING_DUE_DATE"
   var SETTING_MATERNITY_START = "SETTING_MATERNITY_START"
+  var NUM_MATERNITY_DAYS = 105
+  var NUM_PARENTAL_DAYS = 158
+
   var state = {
     dueDate: null,
     validMaternityStartDays: [],
     maternityDays: [],
+    parentalDays: [],
     action: SETTING_DUE_DATE
   }
 
@@ -29,7 +33,13 @@ $(function() {
     var date = moment().subtract(1, 'days').day(1)
     return $(Array.apply(null, {length: weeks}).map(function(it, idx) {
       var text = "<div class='calendar__week_row'>"
-      text += "<div class='month_name "+oddOrEvenMonthAdjusted(date)+"'>"+monthTitleOrEmpty(date)+"</div>"
+
+      var classes = ['month_name', oddOrEvenMonthAdjusted(date)]
+      if (date.month() == 0 && shouldHaveMonthTitle(date)) {
+        classes.push('start_of_year')
+      }
+
+      text += "<div class='"+ classes.join(' ') +"'>"+monthTitleOrEmpty(date)+"</div>"
       text += renderWeek(moment(date).subtract(1, 'days'))+"</div>"
       date.add(1, 'weeks')
       return text
@@ -39,12 +49,13 @@ $(function() {
   function renderWeek(date) {
     return Array.apply(null, {length: 7}).map(function(it, idx) {
       date.add(1, 'days')
-      var classes = ['day', oddOrEven(date)]
+      var classes = ['day', oddOrEvenMonth(date)]
       var dateDesignator = formatDateDesignator(date)
       if (isSettingMaternityStart() && isValidMaternityStart(dateDesignator)) { classes.push("valid-maternity-start") }
       if (isHoliday(dateDesignator)) { classes.push("holiday") }
       if (isMaternityDate(dateDesignator)) { classes.push("maternity") }
-      if (isDueDate(dateDesignator)) { classes.push("due-date") }
+      if (isParentalDate(dateDesignator)) { classes.push("parental") }
+      if (isDueDate(dateDesignator)) { classes.push("due_date") }
       if (isSunday(dateDesignator)) { classes.push("sunday") }
       return "<div class='"+ classes.join(" ") +"' data-date='"+ dateDesignator +"'>"+formatDayStr(date)+"</div>"
     }).join("")
@@ -52,22 +63,27 @@ $(function() {
 
   function createInfoView() {
     var nodes = [
-      "<h3>Due date: "+(state.dueDate || "")+"</h3>",
-      "<h3>Maternity start: "+(state.maternityStart || "")+"</h3>"
+      "<h3>Laskettu aika: "+(state.dueDate || "")+"</h3>",
+      "<h3>&Auml;itiysraha: "+(state.maternityStart || "")+(state.maternityEnd ? " - " + state.maternityEnd : "") +"</h3>",
+      "<h3>Vanhempainraha: "+(state.parentalStart || "")+(state.parentalEnd ? " - " + state.parentalEnd : "") +"</h3>"
     ]
     return $(nodes.join(""))
   }
 
-  function oddOrEven(date) {
+  function oddOrEvenMonth(date) {
     return date.month() % 2 == 0 ? "even" : "odd"
   }
 
   function oddOrEvenMonthAdjusted(date) {
-    return date.month() % 2 == 0 && date.weekday() == 0 ? "even" : "odd"
+    return date.month() % 2 == 0 && date.weekday() == 1 ? "even" : "odd"
   }
 
   function monthTitleOrEmpty(date) {
-    return date.date() < 8 ? date.format("MMMM YYYY") : ""
+     return shouldHaveMonthTitle(date) ? date.format("MMMM YYYY") : ""
+  }
+
+  function shouldHaveMonthTitle(date) {
+    return date.date() < 8
   }
 
   function formatDayStr(date) {
@@ -104,14 +120,7 @@ $(function() {
   }
 
   function calculateValidMaternityStartDatesFrom(dueDate) {
-    var dueDateMoment = moment(dueDate, "DD-MM-YYYY")
-    if (!dueDateMoment.isValid()) {
-      return false
-    }
-    var weekdays = Array.apply(null, {length: 100}).map(function(it, idx) {
-      return formatDateDesignator(moment(dueDateMoment).subtract(idx + 1, 'days'))
-    }).filter(not(isSundayOrHoliday))
-    return weekdays.slice(29, 50)
+    return calculateWeekdaysFrom(dueDate, 51, 'subtract').slice(30)
   }
 
   function isValidMaternityStart(dateDesignator) {
@@ -130,6 +139,10 @@ $(function() {
     return state.maternityDays.indexOf(dateDesignator) > -1
   }
 
+  function isParentalDate(dateDesignator) {
+    return state.parentalDays.indexOf(dateDesignator) > -1
+  }
+
   function isSunday(dateDesignator) {
     return moment(dateDesignator, "DD-MM-YYYY").day() == 0
   }
@@ -142,33 +155,62 @@ $(function() {
     state.dueDate = null
     state.action = SETTING_DUE_DATE
     clearMaternityStart()
+    clearParentalStart()
     reRender()
   }
 
   function clearMaternityStart() {
     state.maternityStart = null
     state.maternityDays = []
-    reRender()
+    state.maternityEnd = null
+  }
+
+  function clearParentalStart() {
+    state.parentalStart = null
+    state.parentalDays = []
+    state.parentalEnd = null
   }
 
   function setMaternityStart(dateDesignator) {
     if (isValidMaternityStart(dateDesignator)) {
       state.maternityStart = dateDesignator
       state.maternityDays = calculateMaternityDates(state.maternityStart)
+      state.maternityEnd = state.maternityDays[NUM_MATERNITY_DAYS - 1]
       state.action = null
+
+      setParentalLeaveStart(nextWeekdayFrom(state.maternityEnd))
       reRender()
     }
   }
 
+  function setParentalLeaveStart(dateDesignator) {
+    state.parentalStart = dateDesignator
+    state.parentalDays = calculateWeekdaysFrom(dateDesignator, NUM_PARENTAL_DAYS)
+    state.parentalEnd = state.parentalDays[NUM_PARENTAL_DAYS - 1]
+  }
+
+  function nextWeekdayFrom(dateDesignator) {
+    var dt = moment(dateDesignator, "DD-MM-YYYY")
+    do {
+      dt.add(1, 'days')
+    } while (dt.day() == 0 || dt.day() == 6)
+    return formatDateDesignator(dt)
+  }
+
   function calculateMaternityDates(maternityStart) {
-    var maternityStartMoment = moment(maternityStart, "DD-MM-YYYY")
-    if (!maternityStartMoment.isValid()) {
+    return calculateWeekdaysFrom(maternityStart, NUM_MATERNITY_DAYS)
+  }
+
+  function calculateWeekdaysFrom(date, num, operator) {
+    var datemoment = moment(date, "DD-MM-YYYY")
+    var op = operator || "add"
+    if (!datemoment.isValid()) {
       return []
     }
-    var weekdays = Array.apply(null, {length: 200}).map(function(it, idx) {
-      return formatDateDesignator(moment(maternityStartMoment).add(idx, 'days'))
+    var weekdays = Array.apply(null, {length: num * 2}).map(function(it, idx) {
+      return formatDateDesignator(moment(datemoment)[op](idx, 'days'))
     }).filter(not(isSundayOrHoliday))
-    return weekdays.slice(0, 105)
+    return weekdays.slice(0, num)
   }
 
   function isSettingMaternityStart() {

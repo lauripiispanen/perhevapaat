@@ -39,6 +39,11 @@ body {
   background-color: #ddd;
 }
 
+.month_name.start_of_year {
+  box-sizing: border-box;
+  border-top: 2px solid #999;
+}
+
 .day.holiday {
   background-color: #faa;
 }
@@ -54,7 +59,14 @@ body {
   background-color: #99C;
 }
 
-.day.due-date {
+.day.parental {
+  background-color: #ACC;
+}
+.day.parental.odd {
+  background-color: #CEE;
+}
+
+.day.due_date {
   background-color: #393;
 }
 

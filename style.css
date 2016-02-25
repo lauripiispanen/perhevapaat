@@ -66,8 +66,12 @@ body {
   background-color: #CEE;
 }
 
-.day.due_date {
+.day.due_date, .day.maternity.due_date {
   background-color: #393;
+}
+
+.day.paternal, .day.paternal.odd, .day.paternal.even {
+  background-color: #EEE;
 }
 
 .day.sunday {

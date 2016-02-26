@@ -61,7 +61,7 @@ $(function() {
                 .skipDuplicates()
                 .onValue(function(date) {
                   state.dragPaternalDays = weekDaysBetween(state.dragStartDate, date)
-                  reRender()
+                  refresh()
                 })
 
   $(".calendar").asEventStream("mouseup", ".day")
@@ -81,12 +81,42 @@ $(function() {
                   }
 
                   state.dragPaternalDays = []
-                  reRender()
+                  refresh()
                 })
 
-  function reRender() {
+  function renderCalendar() {
     $(".calendar").empty().append(createDateTable())
     $(".info").empty().append(createInfoView())
+  }
+
+  function refresh() {
+    ["due_date", "valid-maternity-start", "maternity", "parental", "paternal"].forEach(function(cl) {
+      $("." + cl).removeClass(cl)
+    })
+
+    markDateNodesWith([state.dueDate], "due_date")
+    if (isSettingMaternityStart()) {
+      markDateNodesWith(state.validMaternityStartDays, "valid-maternity-start")
+    }
+
+    markDateNodesWith(state.maternityDays, "maternity")
+    markDateNodesWith(state.parentalDays, "parental")
+    markDateNodesWith(state.paternalDays, "paternal")
+
+    if (state.dragMode == "remove") {
+      state.dragPaternalDays.forEach(function(date) {
+        $("#day-node-" + date).removeClass("paternal")
+      })
+    } else if (state.dragMode == "add") {
+      markDateNodesWith(state.dragPaternalDays, "paternal")
+    }
+
+  }
+
+  function markDateNodesWith(dates, className) {
+    dates.forEach(function(date) {
+      $("#day-node-" + date).addClass(className)
+    })
   }
 
   function createDateTable() {
@@ -117,14 +147,9 @@ $(function() {
       date.add(1, 'days')
       var classes = ['day', oddOrEvenMonth(date)]
       var dateDesignator = date.date() + "-" + (date.month() + 1) + "-" + date.year()
-      if (isSettingMaternityStart() && isValidMaternityStart(dateDesignator)) { classes.push("valid-maternity-start") }
       if (isHoliday(dateDesignator)) { classes.push("holiday") }
-      if (isMaternityDate(dateDesignator)) { classes.push("maternity") }
-      if (isParentalDate(dateDesignator)) { classes.push("parental") }
-      if (isDueDate(dateDesignator)) { classes.push("due_date") }
       if (isSundayMoment(date)) { classes.push("sunday") }
-      if (isPaternalDate(dateDesignator)) { classes.push("paternal") }
-      text += "<div class='"+ classes.join(" ") +"' data-date='"+ dateDesignator +"'>"+date.date()+"</div>"
+      text += "<div class='"+ classes.join(" ") +"' data-date='"+ dateDesignator +"' id='day-node-"+dateDesignator+"'>"+date.date()+"</div>"
     }
     return text
   }
@@ -196,7 +221,7 @@ $(function() {
     state.validMaternityStartDays = calculateValidMaternityStartDatesFrom(state.dueDate)
     clearMaternityStart()
     clearParentalStart()
-    reRender()
+    refresh()
   }
 
   function calculateValidMaternityStartDatesFrom(dueDate) {
@@ -252,7 +277,7 @@ $(function() {
     state.action = SETTING_DUE_DATE
     clearMaternityStart()
     clearParentalStart()
-    reRender()
+    refresh()
   }
 
   function clearMaternityStart() {
@@ -275,7 +300,7 @@ $(function() {
       state.action = null
 
       setParentalLeaveStart(nextWeekdayFrom(state.maternityEnd))
-      reRender()
+      refresh()
     }
   }
 
@@ -460,6 +485,6 @@ $(function() {
     "26-12-2020" : "Tapaninpäivä",
   }
 
-  reRender()
+  renderCalendar()
 
 })
